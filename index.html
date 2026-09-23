@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Particle Color Reveal</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #0d0f12;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            gap: 16px;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: min(92vw, 760px);
+            height: 480px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7),
+                0 0 0 1px rgba(255, 255, 255, 0.08);
+            cursor: crosshair;
+        }
+
+        /* Base grayscale image */
+        .bg-base {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: grayscale(100%) contrast(115%) brightness(0.85);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            user-select: none;
+            pointer-events: none;
+        }
+
+        /* Canvas where particles slice through and reveal color + zoom */
+        #revealCanvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .hint {
+            color: #717682;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="canvas-container" id="container">
+        <img id="baseImg" class="bg-base" src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&q=80"
+            alt="Scenic View" crossorigin="anonymous" />
+        <canvas id="revealCanvas"></canvas>
+    </div>
+
+    <p class="hint">Move mouse to spawn color particles</p>
+
+    <script>
+        const container = document.getElementById('container');
+        const canvas = document.getElementById('revealCanvas');
+        const ctx = canvas.getContext('2d');
+        const baseImg = document.getElementById('baseImg');
+
+        const colorImg = new Image();
+        colorImg.crossOrigin = "anonymous";
+        colorImg.src = baseImg.src;
+
+        let width, height;
+        let particles = [];
+        let mouse = { x: -1000, y: -1000, isHovered: false };
+
+        function resize() {
+            const rect = container.getBoundingClientRect();
+            width = canvas.width = rect.width;
+            height = canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Particle constructor
+        class Particle {
+            constructor(x, y) {
+                this.x = x + (Math.random() - 0.5) * 20;
+                this.y = y + (Math.random() - 0.5) * 20;
+                // Float outward like particles.js
+                this.vx = (Math.random() - 0.5) * 3;
+                this.vy = (Math.random() - 0.5) * 3 - 0.5;
+                this.radius = Math.random() * 32 + 18; // Size of colored spot
+                this.maxLife = Math.random() * 30 + 35;
+                this.life = this.maxLife;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= 0.96;
+                this.vy *= 0.96;
+                this.life--;
+            }
+
+            drawMask(maskCtx) {
+                const progress = this.life / this.maxLife;
+                const currentRadius = this.radius * Math.sin((progress * Math.PI) / 2);
+
+                if (currentRadius <= 0) return;
+
+                // Radial gradient for smooth feathered edge
+                const grad = maskCtx.createRadialGradient(
+                    this.x, this.y, 0,
+                    this.x, this.y, currentRadius
+                );
+                grad.addColorStop(0, `rgba(0, 0, 0, ${progress * 0.95})`);
+                grad.addColorStop(0.6, `rgba(0, 0, 0, ${progress * 0.6})`);
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                maskCtx.fillStyle = grad;
+                maskCtx.beginPath();
+                maskCtx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
+                maskCtx.fill();
+            }
+        }
+
+        // Off-screen canvas for the particle mask layer
+        const maskCanvas = document.createElement('canvas');
+        const maskCtx = maskCanvas.getContext('2d');
+
+        function syncMaskCanvas() {
+            if (maskCanvas.width !== width || maskCanvas.height !== height) {
+                maskCanvas.width = width;
+                maskCanvas.height = height;
+            }
+        }
+
+        container.addEventListener('mousemove', (e) => {
+            const rect = container.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+            mouse.isHovered = true;
+
+            // Spawn particles on mouse move
+            for (let i = 0; i < 3; i++) {
+                particles.push(new Particle(mouse.x, mouse.y));
+            }
+        });
+
+        container.addEventListener('mouseenter', () => {
+            mouse.isHovered = true;
+        });
+
+        container.addEventListener('mouseleave', () => {
+            mouse.isHovered = false;
+            mouse.x = -1000;
+            mouse.y = -1000;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            syncMaskCanvas();
+
+            // Clear render buffers
+            ctx.clearRect(0, 0, width, height);
+            maskCtx.clearRect(0, 0, width, height);
+
+            // Add a steady glow particle right under cursor while inside
+            if (mouse.isHovered && Math.random() > 0.3) {
+                particles.push(new Particle(mouse.x, mouse.y));
+            }
+
+            // Update & render particles to the mask
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.drawMask(maskCtx);
+
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            if (!colorImg.complete || colorImg.naturalWidth === 0) return;
+
+            // Compute slight dynamic zoom offset toward mouse cursor
+            const zoomFactor = mouse.isHovered ? 1.08 : 1.0;
+            const originX = mouse.isHovered ? mouse.x : width / 2;
+            const originY = mouse.isHovered ? mouse.y : height / 2;
+
+            ctx.save();
+
+            // Apply slight zoom centered at cursor position
+            ctx.translate(originX, originY);
+            ctx.scale(zoomFactor, zoomFactor);
+            ctx.translate(-originX, -originY);
+
+            // 1. Draw full color image
+            ctx.drawImage(colorImg, 0, 0, width, height);
+
+            // 2. Composite: Keep color ONLY where mask particles exist
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.drawImage(maskCanvas, 0, 0);
+
+            ctx.restore();
+        }
+
+        colorImg.onload = () => {
+            animate();
+        };
+    </script>
+</body>
+
+</html>
