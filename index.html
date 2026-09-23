@@ -2,9 +2,11 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Particle Color Reveal</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <title>Particle Color Reveal</title>
+
     <style>
         * {
             box-sizing: border-box;
@@ -12,220 +14,1162 @@
             padding: 0;
         }
 
+        :root {
+            --bg: #080a0d;
+            --text: #f5f7fa;
+            --muted: #727985;
+        }
+
+        html,
+        body {
+            width: 100%;
+            min-height: 100%;
+        }
+
         body {
             min-height: 100vh;
-            background: #0d0f12;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 50% 45%,
+                    rgba(35, 42, 52, 0.3),
+                    transparent 45%),
+                var(--bg);
+
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-family: system-ui, -apple-system, sans-serif;
-            gap: 16px;
-            overflow: hidden;
+
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            color: var(--text);
+            padding: 24px;
         }
 
-        .canvas-container {
-            position: relative;
-            width: min(92vw, 760px);
-            height: 480px;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7),
-                0 0 0 1px rgba(255, 255, 255, 0.08);
-            cursor: crosshair;
+        /* --------------------------------------------------
+           MAIN WRAPPER
+        -------------------------------------------------- */
+
+        .experience {
+            width: min(94vw, 1100px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
         }
 
-        /* Base grayscale image */
-        .bg-base {
-            position: absolute;
-            inset: 0;
+        /* --------------------------------------------------
+           HEADER
+        -------------------------------------------------- */
+
+        .header {
             width: 100%;
-            height: 100%;
-            object-fit: cover;
-            filter: grayscale(100%) contrast(115%) brightness(0.85);
-            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 4px;
             pointer-events: none;
         }
 
-        /* Canvas where particles slice through and reveal color + zoom */
+        .brand {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: #cbd0d8;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #666d78;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #72ffb6;
+
+            box-shadow:
+                0 0 8px rgba(114, 255, 182, 0.8),
+                0 0 18px rgba(114, 255, 182, 0.35);
+
+            animation: pulse 1.8s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.45;
+                transform: scale(0.85);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* --------------------------------------------------
+           CANVAS FRAME
+        -------------------------------------------------- */
+
+        .canvas-container {
+            position: relative;
+
+            width: 100%;
+            height: min(68vh, 620px);
+
+            min-height: 380px;
+
+            border-radius: 26px;
+            overflow: hidden;
+
+            background: #111318;
+
+            box-shadow:
+                0 35px 80px rgba(0, 0, 0, 0.55),
+                0 0 0 1px rgba(255, 255, 255, 0.07),
+                inset 0 1px rgba(255, 255, 255, 0.06);
+
+            cursor: crosshair;
+
+            isolation: isolate;
+        }
+
+        /* subtle glass highlight */
+
+        .canvas-container::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+
+            z-index: 10;
+            pointer-events: none;
+
+            background:
+                linear-gradient(120deg,
+                    rgba(255, 255, 255, 0.05),
+                    transparent 25%,
+                    transparent 75%,
+                    rgba(255, 255, 255, 0.02));
+
+            mix-blend-mode: screen;
+        }
+
+        /* --------------------------------------------------
+           IMAGE
+        -------------------------------------------------- */
+
+        .bg-base {
+            position: absolute;
+            inset: -3%;
+
+            width: 106%;
+            height: 106%;
+
+            object-fit: cover;
+
+            filter:
+                grayscale(100%) contrast(112%) brightness(0.68);
+
+            transform-origin: center;
+
+            user-select: none;
+            pointer-events: none;
+
+            will-change: transform;
+        }
+
+        /* color layer */
+
         #revealCanvas {
             position: absolute;
             inset: 0;
+
             width: 100%;
             height: 100%;
+
             display: block;
-            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+            pointer-events: none;
+
+            will-change: transform;
         }
 
-        .hint {
-            color: #717682;
-            font-size: 14px;
-            letter-spacing: 0.5px;
+        /* cursor glow */
+
+        .cursor-glow {
+            position: absolute;
+
+            width: 260px;
+            height: 260px;
+
+            left: 0;
+            top: 0;
+
+            border-radius: 50%;
+
+            pointer-events: none;
+
+            opacity: 0;
+
+            background:
+                radial-gradient(circle,
+                    rgba(255, 255, 255, 0.055) 0%,
+                    rgba(255, 255, 255, 0.02) 30%,
+                    transparent 70%);
+
+            transform: translate(-50%, -50%);
+
+            filter: blur(8px);
+
+            z-index: 7;
+
+            transition: opacity 0.35s ease;
+        }
+
+        .canvas-container.active .cursor-glow {
+            opacity: 1;
+        }
+
+        /* --------------------------------------------------
+           VIGNETTE
+        -------------------------------------------------- */
+
+        .vignette {
+            position: absolute;
+            inset: 0;
+
+            pointer-events: none;
+
+            z-index: 8;
+
+            background:
+                radial-gradient(circle at center,
+                    transparent 35%,
+                    rgba(0, 0, 0, 0.22) 70%,
+                    rgba(0, 0, 0, 0.5) 100%);
+        }
+
+        /* --------------------------------------------------
+           TEXT
+        -------------------------------------------------- */
+
+        .instruction {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+
+            color: var(--muted);
+
+            font-size: 12px;
+            letter-spacing: 0.08em;
+
+            text-transform: uppercase;
+
+            user-select: none;
+        }
+
+        .mouse-icon {
+            width: 16px;
+            height: 22px;
+
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 10px;
+
+            position: relative;
+        }
+
+        .mouse-icon::before {
+            content: "";
+
+            position: absolute;
+
+            width: 2px;
+            height: 5px;
+
+            background: rgba(255, 255, 255, 0.55);
+
+            border-radius: 2px;
+
+            top: 4px;
+            left: 50%;
+
+            transform: translateX(-50%);
+        }
+
+        /* --------------------------------------------------
+           MOBILE
+        -------------------------------------------------- */
+
+        @media (max-width: 700px) {
+            body {
+                padding: 14px;
+            }
+
+            .canvas-container {
+                height: 65vh;
+                min-height: 360px;
+                border-radius: 20px;
+            }
+
+            .brand {
+                font-size: 10px;
+            }
+
+            .status {
+                font-size: 9px;
+            }
+
+            .instruction {
+                font-size: 10px;
+            }
         }
     </style>
 </head>
 
 <body>
 
-    <div class="canvas-container" id="container">
-        <img id="baseImg" class="bg-base" src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1200&q=80"
-            alt="Scenic View" crossorigin="anonymous" />
-        <canvas id="revealCanvas"></canvas>
-    </div>
+    <main class="experience">
 
-    <p class="hint">Move mouse to spawn color particles</p>
+        <header class="header">
+            <div class="brand">
+                Color / Reveal
+            </div>
+
+            <div class="status">
+                <span class="status-dot"></span>
+                Interactive
+            </div>
+        </header>
+
+        <div class="canvas-container" id="container">
+
+            <img id="baseImg" class="bg-base"
+                src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1600&q=90" alt="Scenic landscape"
+                crossorigin="anonymous" />
+
+            <canvas id="revealCanvas"></canvas>
+
+            <div class="cursor-glow" id="cursorGlow"></div>
+
+            <div class="vignette"></div>
+
+        </div>
+
+        <div class="instruction">
+            <span class="mouse-icon"></span>
+            Move your cursor to reveal color
+        </div>
+
+    </main>
+
 
     <script>
-        const container = document.getElementById('container');
-        const canvas = document.getElementById('revealCanvas');
-        const ctx = canvas.getContext('2d');
-        const baseImg = document.getElementById('baseImg');
+        /* ==================================================
+           ELEMENTS
+        ================================================== */
+
+        const container = document.getElementById("container");
+        const canvas = document.getElementById("revealCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const baseImg = document.getElementById("baseImg");
+        const cursorGlow = document.getElementById("cursorGlow");
+
+
+        /* ==================================================
+           COLOR IMAGE
+        ================================================== */
 
         const colorImg = new Image();
+
         colorImg.crossOrigin = "anonymous";
         colorImg.src = baseImg.src;
 
-        let width, height;
+
+        /* ==================================================
+           CANVAS STATE
+        ================================================== */
+
+        let width = 0;
+        let height = 0;
+        let dpr = 1;
+
         let particles = [];
-        let mouse = { x: -1000, y: -1000, isHovered: false };
+
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+
+        let mouse = {
+            x: -1000,
+            y: -1000,
+
+            targetX: -1000,
+            targetY: -1000,
+
+            active: false,
+
+            velocityX: 0,
+            velocityY: 0
+        };
+
+
+        /* ==================================================
+           MASK CANVAS
+        ================================================== */
+
+        const maskCanvas = document.createElement("canvas");
+        const maskCtx = maskCanvas.getContext("2d");
+
+
+        /* ==================================================
+           RESIZE
+        ================================================== */
 
         function resize() {
+
             const rect = container.getBoundingClientRect();
-            width = canvas.width = rect.width;
-            height = canvas.height = rect.height;
+
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+            width = rect.width;
+            height = rect.height;
+
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+
+            maskCanvas.width = width * dpr;
+            maskCanvas.height = height * dpr;
+
+            canvas.style.width = width + "px";
+            canvas.style.height = height + "px";
+
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            maskCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
-        window.addEventListener('resize', resize);
+
+        window.addEventListener("resize", resize);
+
         resize();
 
-        // Particle constructor
+
+        /* ==================================================
+           PARTICLE
+        ================================================== */
+
         class Particle {
-            constructor(x, y) {
-                this.x = x + (Math.random() - 0.5) * 20;
-                this.y = y + (Math.random() - 0.5) * 20;
-                // Float outward like particles.js
-                this.vx = (Math.random() - 0.5) * 3;
-                this.vy = (Math.random() - 0.5) * 3 - 0.5;
-                this.radius = Math.random() * 32 + 18; // Size of colored spot
-                this.maxLife = Math.random() * 30 + 35;
-                this.life = this.maxLife;
+
+            constructor(x, y, power = 1) {
+
+                this.x =
+                    x +
+                    (Math.random() - 0.5) *
+                    (25 + power * 15);
+
+                this.y =
+                    y +
+                    (Math.random() - 0.5) *
+                    (25 + power * 15);
+
+
+                const angle =
+                    Math.random() *
+                    Math.PI *
+                    2;
+
+
+                const speed =
+                    Math.random() *
+                    (1.5 + power * 1.5);
+
+
+                this.vx =
+                    Math.cos(angle) *
+                    speed;
+
+                this.vy =
+                    Math.sin(angle) *
+                    speed;
+
+
+                /* Bigger main reveal */
+
+                this.radius =
+                    18 +
+                    Math.random() *
+                    35;
+
+
+                /* Some particles become tiny */
+
+                if (Math.random() < 0.28) {
+
+                    this.radius =
+                        4 +
+                        Math.random() *
+                        13;
+                }
+
+
+                this.life =
+                    50 +
+                    Math.random() *
+                    55;
+
+
+                this.maxLife = this.life;
+
+
+                this.drag =
+                    0.965 +
+                    Math.random() *
+                    0.02;
+
+
+                this.opacity =
+                    0.45 +
+                    Math.random() *
+                    0.55;
+
+
+                this.rotation =
+                    Math.random() *
+                    Math.PI *
+                    2;
             }
 
+
             update() {
+
                 this.x += this.vx;
                 this.y += this.vy;
-                this.vx *= 0.96;
-                this.vy *= 0.96;
+
+                this.vx *= this.drag;
+                this.vy *= this.drag;
+
+                /* subtle gravity */
+
+                this.vy += 0.003;
+
+                this.rotation += 0.01;
+
                 this.life--;
             }
 
-            drawMask(maskCtx) {
-                const progress = this.life / this.maxLife;
-                const currentRadius = this.radius * Math.sin((progress * Math.PI) / 2);
 
-                if (currentRadius <= 0) return;
+            drawMask() {
 
-                // Radial gradient for smooth feathered edge
-                const grad = maskCtx.createRadialGradient(
-                    this.x, this.y, 0,
-                    this.x, this.y, currentRadius
+                const progress =
+                    this.life / this.maxLife;
+
+
+                /*
+                    Smooth life curve.
+
+                    Particle appears quickly,
+                    stays visible,
+                    then fades.
+                */
+
+                const fade =
+                    Math.sin(
+                        progress * Math.PI
+                    );
+
+
+                const radius =
+                    this.radius *
+                    (0.75 + fade * 0.35);
+
+
+                if (radius <= 0) return;
+
+
+                const gradient =
+                    maskCtx.createRadialGradient(
+                        this.x,
+                        this.y,
+                        0,
+
+                        this.x,
+                        this.y,
+                        radius
+                    );
+
+
+                gradient.addColorStop(
+                    0,
+                    `rgba(
+                        255,
+                        255,
+                        255,
+                        ${this.opacity * fade}
+                    )`
                 );
-                grad.addColorStop(0, `rgba(0, 0, 0, ${progress * 0.95})`);
-                grad.addColorStop(0.6, `rgba(0, 0, 0, ${progress * 0.6})`);
-                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-                maskCtx.fillStyle = grad;
+
+                gradient.addColorStop(
+                    0.35,
+                    `rgba(
+                        255,
+                        255,
+                        255,
+                        ${this.opacity * fade * 0.8}
+                    )`
+                );
+
+
+                gradient.addColorStop(
+                    0.72,
+                    `rgba(
+                        255,
+                        255,
+                        255,
+                        ${this.opacity * fade * 0.25}
+                    )`
+                );
+
+
+                gradient.addColorStop(
+                    1,
+                    "rgba(255,255,255,0)"
+                );
+
+
+                maskCtx.fillStyle = gradient;
+
+
                 maskCtx.beginPath();
-                maskCtx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
+
+                maskCtx.arc(
+                    this.x,
+                    this.y,
+                    radius,
+                    0,
+                    Math.PI * 2
+                );
+
                 maskCtx.fill();
             }
         }
 
-        // Off-screen canvas for the particle mask layer
-        const maskCanvas = document.createElement('canvas');
-        const maskCtx = maskCanvas.getContext('2d');
 
-        function syncMaskCanvas() {
-            if (maskCanvas.width !== width || maskCanvas.height !== height) {
-                maskCanvas.width = width;
-                maskCanvas.height = height;
+        /* ==================================================
+           SPAWN PARTICLES
+        ================================================== */
+
+        function spawnParticles(x, y, amount = 4) {
+
+            for (let i = 0; i < amount; i++) {
+
+                particles.push(
+                    new Particle(
+                        x,
+                        y,
+                        Math.random()
+                    )
+                );
+            }
+
+
+            /*
+                Prevent runaway particle count.
+            */
+
+            if (particles.length > 900) {
+
+                particles.splice(
+                    0,
+                    particles.length - 900
+                );
             }
         }
 
-        container.addEventListener('mousemove', (e) => {
-            const rect = container.getBoundingClientRect();
-            mouse.x = e.clientX - rect.left;
-            mouse.y = e.clientY - rect.top;
-            mouse.isHovered = true;
 
-            // Spawn particles on mouse move
-            for (let i = 0; i < 3; i++) {
-                particles.push(new Particle(mouse.x, mouse.y));
+        /* ==================================================
+           POINTER
+        ================================================== */
+
+        function updatePointer(x, y) {
+
+            mouse.targetX = x;
+            mouse.targetY = y;
+
+            mouse.velocityX =
+                x - lastMouseX;
+
+            mouse.velocityY =
+                y - lastMouseY;
+
+            lastMouseX = x;
+            lastMouseY = y;
+
+            mouse.active = true;
+
+            container.classList.add("active");
+
+            cursorGlow.style.transform =
+                `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+
+
+            const velocity =
+                Math.sqrt(
+                    mouse.velocityX ** 2 +
+                    mouse.velocityY ** 2
+                );
+
+
+            const amount =
+                Math.min(
+                    10,
+                    3 + Math.floor(velocity / 8)
+                );
+
+
+            spawnParticles(
+                x,
+                y,
+                amount
+            );
+        }
+
+
+        container.addEventListener(
+            "mousemove",
+            (event) => {
+
+                const rect =
+                    container.getBoundingClientRect();
+
+                updatePointer(
+                    event.clientX - rect.left,
+                    event.clientY - rect.top
+                );
             }
-        });
+        );
 
-        container.addEventListener('mouseenter', () => {
-            mouse.isHovered = true;
-        });
 
-        container.addEventListener('mouseleave', () => {
-            mouse.isHovered = false;
-            mouse.x = -1000;
-            mouse.y = -1000;
-        });
+        container.addEventListener(
+            "mouseenter",
+            () => {
 
-        function animate() {
-            requestAnimationFrame(animate);
-            syncMaskCanvas();
+                mouse.active = true;
+                container.classList.add("active");
+            }
+        );
 
-            // Clear render buffers
-            ctx.clearRect(0, 0, width, height);
-            maskCtx.clearRect(0, 0, width, height);
 
-            // Add a steady glow particle right under cursor while inside
-            if (mouse.isHovered && Math.random() > 0.3) {
-                particles.push(new Particle(mouse.x, mouse.y));
+        container.addEventListener(
+            "mouseleave",
+            () => {
+
+                mouse.active = false;
+
+                mouse.targetX = -1000;
+                mouse.targetY = -1000;
+
+                container.classList.remove("active");
+            }
+        );
+
+
+        /* ==================================================
+           TOUCH SUPPORT
+        ================================================== */
+
+        container.addEventListener(
+            "touchstart",
+            (event) => {
+
+                event.preventDefault();
+
+                const rect =
+                    container.getBoundingClientRect();
+
+                const touch =
+                    event.touches[0];
+
+                updatePointer(
+                    touch.clientX - rect.left,
+                    touch.clientY - rect.top
+                );
+            },
+            { passive: false }
+        );
+
+
+        container.addEventListener(
+            "touchmove",
+            (event) => {
+
+                event.preventDefault();
+
+                const rect =
+                    container.getBoundingClientRect();
+
+                const touch =
+                    event.touches[0];
+
+                updatePointer(
+                    touch.clientX - rect.left,
+                    touch.clientY - rect.top
+                );
+            },
+            { passive: false }
+        );
+
+
+        /* ==================================================
+           SMOOTH POINTER
+        ================================================== */
+
+        function smoothPointer() {
+
+            mouse.x +=
+                (mouse.targetX - mouse.x) *
+                0.18;
+
+            mouse.y +=
+                (mouse.targetY - mouse.y) *
+                0.18;
+        }
+
+
+        /* ==================================================
+           IDLE PARTICLES
+        ================================================== */
+
+        let idleTime = 0;
+
+
+        function createIdleReveal() {
+
+            if (mouse.active) {
+
+                idleTime = 0;
+                return;
             }
 
-            // Update & render particles to the mask
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                p.update();
-                p.drawMask(maskCtx);
+            idleTime++;
 
-                if (p.life <= 0) {
+
+            /*
+                After a while,
+                gently animate the image.
+            */
+
+            if (idleTime > 100) {
+
+                const t =
+                    performance.now() * 0.0003;
+
+
+                const x =
+                    width / 2 +
+                    Math.cos(t) *
+                    width *
+                    0.18;
+
+
+                const y =
+                    height / 2 +
+                    Math.sin(t * 1.4) *
+                    height *
+                    0.18;
+
+
+                if (Math.random() < 0.22) {
+
+                    spawnParticles(
+                        x,
+                        y,
+                        1
+                    );
+                }
+            }
+        }
+
+
+        /* ==================================================
+           DRAW
+        ================================================== */
+
+        function draw() {
+
+            requestAnimationFrame(draw);
+
+
+            smoothPointer();
+
+            createIdleReveal();
+
+
+            /*
+                Clear everything.
+            */
+
+            ctx.clearRect(
+                0,
+                0,
+                width,
+                height
+            );
+
+
+            maskCtx.clearRect(
+                0,
+                0,
+                width,
+                height
+            );
+
+
+            /* ------------------------------------------
+               PARTICLES
+            ------------------------------------------ */
+
+            for (
+                let i = particles.length - 1;
+                i >= 0;
+                i--
+            ) {
+
+                const particle =
+                    particles[i];
+
+
+                particle.update();
+
+                particle.drawMask();
+
+
+                if (
+                    particle.life <= 0 ||
+                    particle.x < -100 ||
+                    particle.x > width + 100 ||
+                    particle.y < -100 ||
+                    particle.y > height + 100
+                ) {
+
                     particles.splice(i, 1);
                 }
             }
 
-            if (!colorImg.complete || colorImg.naturalWidth === 0) return;
 
-            // Compute slight dynamic zoom offset toward mouse cursor
-            const zoomFactor = mouse.isHovered ? 1.08 : 1.0;
-            const originX = mouse.isHovered ? mouse.x : width / 2;
-            const originY = mouse.isHovered ? mouse.y : height / 2;
+            if (
+                !colorImg.complete ||
+                colorImg.naturalWidth === 0
+            ) {
+
+                return;
+            }
+
+
+            /* ------------------------------------------
+               PARALLAX
+            ------------------------------------------ */
+
+            let offsetX = 0;
+            let offsetY = 0;
+
+
+            if (mouse.active) {
+
+                offsetX =
+                    (mouse.x - width / 2) *
+                    0.012;
+
+                offsetY =
+                    (mouse.y - height / 2) *
+                    0.012;
+            }
+
+
+            /* ------------------------------------------
+               COLOR IMAGE
+            ------------------------------------------ */
 
             ctx.save();
 
-            // Apply slight zoom centered at cursor position
-            ctx.translate(originX, originY);
-            ctx.scale(zoomFactor, zoomFactor);
-            ctx.translate(-originX, -originY);
 
-            // 1. Draw full color image
-            ctx.drawImage(colorImg, 0, 0, width, height);
+            /*
+                Slight zoom when interacting.
+            */
 
-            // 2. Composite: Keep color ONLY where mask particles exist
-            ctx.globalCompositeOperation = 'destination-in';
-            ctx.drawImage(maskCanvas, 0, 0);
+            const zoom =
+                mouse.active
+                    ? 1.055
+                    : 1.025;
+
+
+            const centerX =
+                mouse.active
+                    ? mouse.x
+                    : width / 2;
+
+
+            const centerY =
+                mouse.active
+                    ? mouse.y
+                    : height / 2;
+
+
+            ctx.translate(
+                centerX,
+                centerY
+            );
+
+
+            ctx.scale(
+                zoom,
+                zoom
+            );
+
+
+            ctx.translate(
+                -centerX + offsetX,
+                -centerY + offsetY
+            );
+
+
+            /*
+                Draw full color image.
+            */
+
+            ctx.drawImage(
+                colorImg,
+                0,
+                0,
+                width,
+                height
+            );
+
+
+            /*
+                Keep only areas covered
+                by particles.
+            */
+
+            ctx.globalCompositeOperation =
+                "destination-in";
+
+
+            ctx.drawImage(
+                maskCanvas,
+                0,
+                0,
+                width,
+                height
+            );
+
 
             ctx.restore();
+
+
+            /* ------------------------------------------
+               RESET COMPOSITE
+            ------------------------------------------ */
+
+            ctx.globalCompositeOperation =
+                "source-over";
+
+
+            /*
+                Add a very subtle glow
+                around active reveal.
+            */
+
+            if (mouse.active) {
+
+                const glow =
+                    ctx.createRadialGradient(
+                        mouse.x,
+                        mouse.y,
+                        0,
+
+                        mouse.x,
+                        mouse.y,
+                        130
+                    );
+
+
+                glow.addColorStop(
+                    0,
+                    "rgba(255,255,255,0.035)"
+                );
+
+
+                glow.addColorStop(
+                    1,
+                    "rgba(255,255,255,0)"
+                );
+
+
+                ctx.fillStyle = glow;
+
+                ctx.beginPath();
+
+                ctx.arc(
+                    mouse.x,
+                    mouse.y,
+                    130,
+                    0,
+                    Math.PI * 2
+                );
+
+                ctx.fill();
+            }
         }
 
+
+        /* ==================================================
+           START
+        ================================================== */
+
         colorImg.onload = () => {
-            animate();
+
+            /*
+                Small initial reveal.
+            */
+
+            spawnParticles(
+                width / 2,
+                height / 2,
+                12
+            );
+
+            draw();
+        };
+
+
+        /*
+            Handle failed image loading.
+        */
+
+        colorImg.onerror = () => {
+
+            console.error(
+                "Unable to load the color image."
+            );
         };
     </script>
+
 </body>
 
 </html>

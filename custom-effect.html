@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#08090c">
+    <title>Particle / Reveal Playground</title>
+    <style>
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+            background: #08090c;
+            color: #eef1f5;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+        }
+
+        body {
+            min-height: 100vh;
+            padding: 18px;
+            overflow-x: hidden
+        }
+
+        .app {
+            width: min(1500px, 100%);
+            margin: auto
+        }
+
+        header {
+            height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #1d2026;
+            margin-bottom: 16px
+        }
+
+        .brand {
+            display: flex;
+            gap: 12px;
+            align-items: center
+        }
+
+        .mark {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #9affc7;
+            box-shadow: 0 0 18px #9affc755
+        }
+
+        h1 {
+            font-size: 13px;
+            letter-spacing: .14em;
+            text-transform: uppercase;
+            margin: 0;
+            font-weight: 650
+        }
+
+        .sub {
+            font-size: 10px;
+            color: #747b86;
+            margin-top: 3px;
+            letter-spacing: .05em
+        }
+
+        .live {
+            font: 10px ui-monospace, monospace;
+            color: #858d98;
+            letter-spacing: .1em;
+            text-transform: uppercase
+        }
+
+        .live i {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #72ffb6;
+            margin-right: 7px;
+            box-shadow: 0 0 10px #72ffb699
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 360px;
+            gap: 16px
+        }
+
+        .stage-wrap {
+            min-width: 0
+        }
+
+        .stage {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/10;
+            min-height: 500px;
+            border: 1px solid #252931;
+            border-radius: 20px;
+            overflow: hidden;
+            background: #111318;
+            box-shadow: 0 28px 70px #0009;
+            isolation: isolate;
+            cursor: crosshair
+        }
+
+        #base {
+            position: absolute;
+            inset: -4%;
+            width: 108%;
+            height: 108%;
+            object-fit: cover;
+            pointer-events: none;
+            user-select: none;
+            will-change: transform
+        }
+
+        #canvas {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none
+        }
+
+        .glow {
+            position: absolute;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 4;
+            opacity: 0;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.06) 25%, transparent 68%);
+            filter: blur(8px);
+            transform: translate(-50%, -50%);
+            will-change: transform, opacity
+        }
+
+        .stage.active .glow {
+            opacity: 1
+        }
+
+        .veil {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            background: radial-gradient(circle at center, transparent 38%, #0002 72%, #0008 100%)
+        }
+
+        .hint {
+            position: absolute;
+            left: 18px;
+            bottom: 16px;
+            z-index: 6;
+            font: 10px ui-monospace, monospace;
+            color: #a1a7b0;
+            background: #08090ca8;
+            border: 1px solid #ffffff12;
+            border-radius: 999px;
+            padding: 8px 11px;
+            backdrop-filter: blur(8px)
+        }
+
+        .stats {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px
+        }
+
+        .stat {
+            font: 10px ui-monospace, monospace;
+            color: #8d949f;
+            border: 1px solid #1f232a;
+            border-radius: 9px;
+            padding: 7px 9px;
+            background: #0c0e12
+        }
+
+        .stat b {
+            color: #dce1e8;
+            font-weight: 500
+        }
+
+        .panel {
+            border: 1px solid #252931;
+            border-radius: 20px;
+            background: #0d0f13;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 500px;
+            max-height: calc(100vh - 110px)
+        }
+
+        .panel-top {
+            padding: 14px 15px;
+            border-bottom: 1px solid #20232a;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: #0d0f13ee;
+            backdrop-filter: blur(12px);
+            z-index: 10
+        }
+
+        select,
+        input,
+        button {
+            font: inherit
+        }
+
+        select,
+        .url {
+            background: #13161b;
+            color: #e8ebef;
+            border: 1px solid #292e36;
+            border-radius: 9px;
+            outline: none
+        }
+
+        .preset {
+            flex: 1;
+            padding: 9px 10px;
+            font-size: 11px
+        }
+
+        .icon-btn,
+        button {
+            color: #cbd1d9;
+            background: #15181e;
+            border: 1px solid #292e36;
+            border-radius: 9px;
+            padding: 8px 10px;
+            cursor: pointer;
+            font-size: 10px
+        }
+
+        button:hover,
+        .icon-btn:hover,
+        select:hover {
+            border-color: #454c57;
+            background: #191c22
+        }
+
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible {
+            outline: 2px solid #72ffb655;
+            outline-offset: 2px
+        }
+
+        .controls {
+            overflow: auto;
+            padding: 6px 14px 14px
+        }
+
+        .group {
+            padding: 14px 0;
+            border-bottom: 1px solid #1c1f25
+        }
+
+        .group:last-child {
+            border: 0
+        }
+
+        .group h2 {
+            margin: 0 0 10px;
+            font: 9px ui-monospace, monospace;
+            color: #707783;
+            letter-spacing: .16em
+        }
+
+        .control {
+            margin: 0 0 12px
+        }
+
+        .control:last-child {
+            margin-bottom: 0
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 6px
+        }
+
+        .label {
+            font-size: 10px;
+            color: #b8bec7
+        }
+
+        .value {
+            font: 10px ui-monospace, monospace;
+            color: #8e96a1
+        }
+
+        input[type=range] {
+            appearance: none;
+            width: 100%;
+            height: 3px;
+            border-radius: 9px;
+            background: #292e35;
+            outline: none
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dfe4ea;
+            border: 2px solid #0d0f13;
+            box-shadow: 0 0 0 1px #69717d55;
+            cursor: pointer
+        }
+
+        input[type=range]::-moz-range-thumb {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #dfe4ea;
+            border: 2px solid #0d0f13;
+            cursor: pointer
+        }
+
+        .check {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0
+        }
+
+        .check label {
+            font-size: 10px;
+            color: #b8bec7
+        }
+
+        .check input {
+            accent-color: #72ffb6;
+            width: 15px;
+            height: 15px
+        }
+
+        .help {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            padding: 0;
+            margin-left: 4px;
+            font: 9px ui-monospace, monospace;
+            color: #858c96;
+            background: #15181d
+        }
+
+        .tip {
+            position: fixed;
+            z-index: 100;
+            width: 230px;
+            padding: 9px 10px;
+            border: 1px solid #303640;
+            border-radius: 9px;
+            background: #11141a;
+            color: #c7cdd5;
+            font-size: 10px;
+            line-height: 1.5;
+            box-shadow: 0 15px 35px #000b;
+            display: none;
+            pointer-events: none
+        }
+
+        .url-row {
+            display: flex;
+            gap: 7px
+        }
+
+        .url {
+            width: 100%;
+            padding: 9px;
+            font-size: 10px
+        }
+
+        .error {
+            font-size: 9px;
+            color: #ff8e8e;
+            margin-top: 6px;
+            min-height: 12px
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px
+        }
+
+        .actions button:last-child {
+            grid-column: 1/-1
+        }
+
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 22px;
+            transform: translate(-50%, 20px);
+            opacity: 0;
+            pointer-events: none;
+            background: #eef1f5;
+            color: #08090c;
+            padding: 9px 13px;
+            border-radius: 9px;
+            font: 10px ui-monospace, monospace;
+            transition: .22s;
+            z-index: 200
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0)
+        }
+
+        @media(max-width:1050px) {
+            .layout {
+                grid-template-columns: 1fr
+            }
+
+            .panel {
+                max-height: none
+            }
+
+            .stage {
+                min-height: 420px
+            }
+        }
+
+        @media(max-width:650px) {
+            body {
+                padding: 10px
+            }
+
+            .layout {
+                gap: 10px
+            }
+
+            .stage {
+                aspect-ratio: auto;
+                height: 62vh;
+                min-height: 350px;
+                border-radius: 15px
+            }
+
+            .stats {
+                margin-bottom: 2px
+            }
+
+            .panel {
+                border-radius: 15px
+            }
+
+            .hint {
+                left: 10px;
+                bottom: 10px
+            }
+
+            .brand h1 {
+                font-size: 11px
+            }
+
+            .sub {
+                display: none
+            }
+        }
+
+        @media(prefers-reduced-motion:reduce) {
+
+            *,
+            *:before,
+            *:after {
+                scroll-behavior: auto !important;
+                animation-duration: .001ms !important;
+                transition-duration: .001ms !important
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <header>
+            <div class="brand"><span class="mark"></span>
+                <div>
+                    <h1>Particle / Reveal Playground</h1>
+                    <div class="sub">Interactive image reveal laboratory</div>
+                </div>
+            </div>
+            <div class="live"><i></i>Live</div>
+        </header>
+        <div class="layout">
+            <section class="stage-wrap">
+                <div class="stage" id="stage"><img id="base" alt="Interactive reveal image"
+                        crossorigin="anonymous"><canvas id="canvas"></canvas>
+                    <div class="glow" id="glow"></div>
+                    <div class="veil"></div>
+                    <div class="hint" id="hint">Move your cursor to reveal color</div>
+                </div>
+                <div class="stats">
+                    <div class="stat">Particles: <b id="sParticles">0</b></div>
+                    <div class="stat">FPS: <b id="sFps">60</b></div>
+                    <div class="stat">Cursor speed: <b id="sSpeed">0.00</b></div>
+                    <div class="stat">Preset: <b id="sPreset">Custom</b></div>
+                </div>
+            </section>
+            <aside class="panel">
+                <div class="panel-top"><select id="preset" class="preset" aria-label="Preset">
+                        <option>Soft</option>
+                        <option>Cinematic</option>
+                        <option>Explosive</option>
+                        <option>Liquid</option>
+                        <option>Minimal</option>
+                        <option>Custom</option>
+                    </select><button id="reset">Reset</button></div>
+                <div class="controls">
+                    <div class="group">
+                        <h2>IMAGE SOURCE</h2>
+                        <div class="url-row"><input id="imageUrl" class="url" aria-label="Image URL"><button
+                                id="applyImage">Apply</button></div>
+                        <div class="error" id="imageError"></div>
+                    </div>
+                    <div class="group">
+                        <h2>PARTICLES</h2>
+                        <div id="particleControls"></div>
+                    </div>
+                    <div class="group">
+                        <h2>REVEAL</h2>
+                        <div id="revealControls"></div>
+                    </div>
+                    <div class="group">
+                        <h2>CURSOR</h2>
+                        <div id="cursorControls"></div>
+                    </div>
+                    <div class="group">
+                        <h2>IMAGE</h2>
+                        <div id="imageControls"></div>
+                    </div>
+                    <div class="group">
+                        <h2>BEHAVIOR</h2>
+                        <div id="behaviorControls"></div>
+                    </div>
+                    <div class="group">
+                        <h2>PRESETS & CONFIG</h2>
+                        <div class="actions"><button id="randomize">Randomize</button><button id="copy">Copy
+                                Config</button><button id="export">Export Settings</button><button id="importBtn">Import
+                                Settings</button><button id="clear">Clear Particles</button></div><input id="file"
+                            type="file" accept="application/json,.json" hidden>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+    <div class="tip" id="tip"></div>
+    <div class="toast" id="toast">Copied!</div>
+    <script>
+        "use strict";
+        /* CONFIGURATION */
+        const IMAGE_URL = "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1600&q=90";
+        const defaults = { particleSize: 42, particleSizeVariation: 35, particleCount: 4, particleLife: 80, particleLifeVariation: 50, particleSpeed: 2, particleSpeedVariation: 2, particleSpread: 20, particleDrag: .97, gravity: .003, revealOpacity: .9, revealSoftness: .65, innerGlow: .03, particleFade: 1, cursorInfluence: 1, cursorSmoothing: .18, cursorGlowSize: 260, cursorGlowOpacity: .05, imageZoom: 1.055, imageParallax: .012, grayscale: 100, imageContrast: 112, imageBrightness: .68, spawnBySpeed: true, idleAnimation: true, touchSupport: true, particleTrail: false, preset: "Custom" };
+        let config = { ...defaults };
+
+        /* DOM / CANVAS */
+        const $ = s => document.querySelector(s), stage = $("#stage"), base = $("#base"), canvas = $("#canvas"), ctx = canvas.getContext("2d"), glow = $("#glow"), mask = document.createElement("canvas"), mctx = mask.getContext("2d");
+        let W = 1, H = 1, dpr = 1, particles = [], last = performance.now(), frames = 0, fps = 60, fpsAt = last, lastSpawn = 0, idle = 0;
+        const mouse = { x: -1000, y: -1000, tx: -1000, ty: -1000, vx: 0, vy: 0, active: false, speed: 0 };
+        const colorImg = new Image(); colorImg.crossOrigin = "anonymous";
+
+        /* CONTROL DEFINITIONS */
+        const defs = {
+            particle: [
+                ["particleSize", "Particle Size", 5, 100, 1, "px", "Maximum reveal radius."], ["particleSizeVariation", "Size Variation", 0, 80, 1, "", "Random particle size variation."], ["particleCount", "Particle Count", 1, 15, 1, "", "Particles spawned per pointer event."], ["particleLife", "Particle Life", 10, 180, 1, "frames", "Particle lifetime."], ["particleLifeVariation", "Life Variation", 0, 120, 1, "", "Random lifetime variation."], ["particleSpeed", "Speed", 0, 8, .1, "", "Initial particle movement."], ["particleSpeedVariation", "Speed Variation", 0, 8, .1, "", "Random speed variation."], ["particleSpread", "Spread", 0, 100, 1, "px", "Initial spawn spread."], ["particleDrag", "Drag", .85, 1, .001, "", "How quickly particles slow down."], ["gravity", "Gravity", -0.02, .02, .001, "", "Vertical particle acceleration."]
+            ], reveal: [
+                ["revealOpacity", "Reveal Opacity", .1, 1, .01, "", "Maximum reveal strength."], ["revealSoftness", "Reveal Softness", .1, 1, .01, "", "Feathering of particle edges."], ["particleFade", "Particle Fade", .1, 2, .01, "", "Controls fade speed."], ["innerGlow", "Inner Glow", 0, .2, .005, "", "Subtle glow around the active area."]
+            ], cursor: [
+                ["cursorInfluence", "Influence", 0, 3, .01, "", "Strength of pointer-driven spawning."], ["cursorSmoothing", "Smoothing", .02, .5, .01, "", "How smoothly the internal cursor follows."], ["cursorGlowSize", "Glow Size", 50, 500, 1, "px", "Cursor glow diameter."], ["cursorGlowOpacity", "Glow Opacity", 0, .2, .005, "", "Cursor glow intensity."]
+            ], image: [
+                ["imageZoom", "Zoom", 1, 1.2, .001, "x", "Interaction zoom."], ["imageParallax", "Parallax", 0, .05, .001, "", "Cursor-driven image movement."], ["grayscale", "Grayscale", 0, 100, 1, "%", "Base grayscale amount."], ["imageContrast", "Contrast", 80, 140, 1, "%", "Image contrast."], ["imageBrightness", "Brightness", .4, 1.2, .01, "x", "Base image brightness."]
+            ]
+        };
+        const fmt = (k, v) => ["particleDrag", "revealOpacity", "revealSoftness", "particleFade", "cursorInfluence", "cursorSmoothing", "cursorGlowOpacity", "imageZoom", "imageParallax", "gravity", "particleSpeed", "particleSpeedVariation", "innerGlow", "imageBrightness"].includes(k) ? Number(v).toFixed(k === "particleDrag" ? 3 : 2) : String(Math.round(v));
+        function makeRange(def, parent) { const [key, label, min, max, step, unit, help] = def; const el = document.createElement("div"); el.className = "control"; el.innerHTML = `<div class="row"><span class="label">${label}<button class="help" type="button" aria-label="Help for ${label}">?</button></span><span class="value" id="v-${key}"></span></div><input type="range" id="c-${key}" min="${min}" max="${max}" step="${step}" value="${config[key]}" aria-label="${label}">`; parent.appendChild(el); const input = el.querySelector("input"); input.addEventListener("input", () => { config[key] = Number(input.value); config.preset = "Custom"; syncPreset(); renderValues(); }); el.querySelector(".help").addEventListener("mouseenter", e => showTip(e, help)); el.querySelector(".help").addEventListener("mouseleave", hideTip); el.querySelector(".help").addEventListener("focus", e => showTip(e, help)); el.querySelector(".help").addEventListener("blur", hideTip) }
+        defs.particle.forEach(d => makeRange(d, $("#particleControls"))); defs.reveal.forEach(d => makeRange(d, $("#revealControls"))); defs.cursor.forEach(d => makeRange(d, $("#cursorControls"))); defs.image.forEach(d => makeRange(d, $("#imageControls")));
+        function check(key, label, parent, help) { const el = document.createElement("div"); el.className = "check"; el.innerHTML = `<label>${label}<button class="help" type="button" aria-label="Help for ${label}">?</button></label><input type="checkbox" id="c-${key}" ${config[key] ? "checked" : ""} aria-label="${label}">`; parent.appendChild(el); const i = el.querySelector("input"); i.onchange = () => { config[key] = i.checked; config.preset = "Custom"; syncPreset() }; el.querySelector(".help").onmouseenter = e => showTip(e, help); el.querySelector(".help").onmouseleave = hideTip }
+        check("spawnBySpeed", "Spawn by Speed", $("#behaviorControls"), "Fast pointer movement creates more particles."); check("idleAnimation", "Idle Animation", $("#behaviorControls"), "Subtly animates a few particles after inactivity."); check("touchSupport", "Touch Support", $("#behaviorControls"), "Allow touch and drag to create reveals."); check("particleTrail", "Particle Trail", $("#behaviorControls"), "Adds a subtle fading trail behind particles.");
+
+        /* IMAGE */
+        function loadImage(url) { $("#imageError").textContent = ""; const test = new Image(); test.crossOrigin = "anonymous"; test.onload = () => { base.src = url; colorImg.src = url; $("#imageUrl").value = url }; test.onerror = () => $("#imageError").textContent = "Unable to load that image. Try another CORS-enabled image URL."; test.src = url }
+        loadImage(IMAGE_URL); $("#applyImage").onclick = () => loadImage($("#imageUrl").value.trim());
+
+        /* PARTICLE SYSTEM */
+        class Particle {
+            constructor(x, y, type) { this.x = x + (Math.random() - .5) * config.particleSpread; this.y = y + (Math.random() - .5) * config.particleSpread; const a = Math.random() * Math.PI * 2; const speed = Math.max(0, config.particleSpeed + (Math.random() - .5) * config.particleSpeedVariation); this.vx = Math.cos(a) * speed; this.vy = Math.sin(a) * speed; const scale = type === 0 ? 1.25 : type === 2 ? .42 : .78; this.r = Math.max(2, (config.particleSize + (Math.random() - .5) * config.particleSizeVariation) * scale); this.life = Math.max(2, config.particleLife + (Math.random() - .5) * config.particleLifeVariation); this.maxLife = this.life; this.opacity = (type === 0 ? 1 : type === 2 ? .5 : .78) * (0.75 + Math.random() * .25) }
+            update() { this.x += this.vx; this.y += this.vy; this.vx *= config.particleDrag; this.vy = this.vy * config.particleDrag + config.gravity; this.life -= config.particleFade }
+            mask() { const p = Math.max(0, Math.min(1, this.life / this.maxLife)); const fade = Math.sin(p * Math.PI); const soft = Math.max(.05, config.revealSoftness); const r = this.r * (.75 + fade * .35); const g = mctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, r); const a = this.opacity * fade * config.revealOpacity; g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(Math.max(.1, .45 - soft * .25), `rgba(255,255,255,${a * .72})`); g.addColorStop(Math.min(.92, .72 + soft * .2), `rgba(255,255,255,${a * .18})`); g.addColorStop(1, "rgba(255,255,255,0)"); mctx.fillStyle = g; mctx.beginPath(); mctx.arc(this.x, this.y, r, 0, Math.PI * 2); mctx.fill() }
+        }
+        function spawn(x, y, n) { const types = [0, 1, 2]; for (let i = 0; i < n; i++)particles.push(new Particle(x, y, types[Math.floor(Math.random() * 3)])); if (particles.length > 900) particles.splice(0, particles.length - 900) }
+        function pointer(x, y) { const dx = x - mouse.tx, dy = y - mouse.ty; mouse.vx = dx; mouse.vy = dy; mouse.speed = Math.hypot(dx, dy); mouse.tx = x; mouse.ty = y; mouse.active = true; idle = 0; stage.classList.add("active"); glow.style.width = glow.style.height = config.cursorGlowSize + "px"; glow.style.opacity = config.cursorGlowOpacity; let amount = config.particleCount; if (config.spawnBySpeed) amount = Math.round(Math.max(1, Math.min(12, config.particleCount * (.55 + mouse.speed * .12) * config.cursorInfluence))); if (performance.now() - lastSpawn > 8) { spawn(x, y, amount); lastSpawn = performance.now() } }
+        function pos(e) { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top] }
+        stage.addEventListener("mousemove", e => { const [x, y] = pos(e); pointer(x, y) }); stage.addEventListener("mouseenter", () => { mouse.active = true; stage.classList.add("active") }); stage.addEventListener("mouseleave", () => { mouse.active = false; stage.classList.remove("active"); mouse.tx = mouse.ty = -1000 });
+        stage.addEventListener("touchstart", e => { if (!config.touchSupport) return; e.preventDefault(); const t = e.touches[0], r = stage.getBoundingClientRect(); pointer(t.clientX - r.left, t.clientY - r.top) }, { passive: false });
+        stage.addEventListener("touchmove", e => { if (!config.touchSupport) return; e.preventDefault(); const t = e.touches[0], r = stage.getBoundingClientRect(); pointer(t.clientX - r.left, t.clientY - r.top) }, { passive: false });
+
+        /* RENDER */
+        function resize() { const r = stage.getBoundingClientRect(); W = r.width; H = r.height; dpr = Math.min(devicePixelRatio || 1, 2); canvas.width = mask.width = W * dpr; canvas.height = mask.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); mctx.setTransform(dpr, 0, 0, dpr, 0, 0) }
+        addEventListener("resize", resize); resize();
+        function smoothPointer() { mouse.x += (mouse.tx - mouse.x) * config.cursorSmoothing; mouse.y += (mouse.ty - mouse.y) * config.cursorSmoothing }
+        function idleSpawn() { if (mouse.active || !config.idleAnimation) { idle = 0; return } idle++; if (idle > 180 && Math.random() < .08) spawn(W / 2 + Math.cos(performance.now() * .0004) * W * .22, H / 2 + Math.sin(performance.now() * .00055) * H * .2, 1) }
+        function render(now) {
+            requestAnimationFrame(render); const dt = Math.min(32, now - last); last = now; smoothPointer(); idleSpawn(); mctx.clearRect(0, 0, W, H); if (config.particleTrail) { mctx.fillStyle = "rgba(0,0,0,.045)"; mctx.fillRect(0, 0, W, H) }
+            for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i]; p.update(); p.mask(); if (p.life <= 0 || p.x < -150 || p.x > W + 150 || p.y < -150 || p.y > H + 150) particles.splice(i, 1) }
+            ctx.clearRect(0, 0, W, H); if (colorImg.complete && colorImg.naturalWidth) { const ox = mouse.active ? (mouse.x - W / 2) * config.imageParallax : 0, oy = mouse.active ? (mouse.y - H / 2) * config.imageParallax : 0, zoom = mouse.active ? config.imageZoom : 1; ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(zoom, zoom); ctx.translate(-W / 2 + ox, -H / 2 + oy); ctx.drawImage(colorImg, 0, 0, W, H); ctx.globalCompositeOperation = "destination-in"; ctx.drawImage(mask, 0, 0, W, H); ctx.restore() }
+            const active = mouse.active && mouse.x > -500; base.style.filter = `grayscale(${config.grayscale}%) contrast(${config.imageContrast}%) brightness(${config.imageBrightness})`; base.style.transform = `translate(${active ? (mouse.x - W / 2) * config.imageParallax * -1 : 0}px,${active ? (mouse.y - H / 2) * config.imageParallax * -1 : 0}px) scale(${active ? config.imageZoom : 1})`; if (active) { glow.style.transform = `translate(${mouse.x}px,${mouse.y}px) translate(-50%,-50%)` }
+            frames++; if (now - fpsAt > 500) { fps = Math.round(frames * 1000 / (now - fpsAt)); frames = 0; fpsAt = now; $("#sFps").textContent = fps; $("#sFps").style.color = fps >= 60 ? "#72ffb6" : fps >= 40 ? "#ffd36e" : "#ff7777" } $("#sParticles").textContent = particles.length; $("#sSpeed").textContent = mouse.speed.toFixed(2)
+        }
+        requestAnimationFrame(render);
+
+        /* PRESETS */
+        const presets = {
+            Soft: { particleSize: 58, particleSizeVariation: 25, particleCount: 3, particleLife: 115, particleLifeVariation: 35, particleSpeed: 1.2, particleSpeedVariation: 1.1, particleSpread: 14, particleDrag: .985, revealSoftness: .82, revealOpacity: .88, particleFade: .7 },
+            Cinematic: { particleSize: 44, particleSizeVariation: 28, particleCount: 5, particleLife: 110, particleLifeVariation: 40, particleSpeed: 1.8, particleSpeedVariation: 1.4, particleSpread: 20, particleDrag: .975, revealSoftness: .68, revealOpacity: .92, particleFade: .72, imageZoom: 1.075, imageParallax: .022 },
+            Explosive: { particleSize: 28, particleSizeVariation: 32, particleCount: 8, particleLife: 58, particleLifeVariation: 35, particleSpeed: 4.8, particleSpeedVariation: 2.5, particleSpread: 65, particleDrag: .93, revealSoftness: .48, revealOpacity: 1, particleFade: 1.25 },
+            Liquid: { particleSize: 64, particleSizeVariation: 30, particleCount: 5, particleLife: 125, particleLifeVariation: 35, particleSpeed: 1.15, particleSpeedVariation: .9, particleSpread: 18, particleDrag: .988, gravity: -.006, revealSoftness: .9, revealOpacity: .9, particleFade: .65 },
+            Minimal: { particleSize: 72, particleSizeVariation: 15, particleCount: 2, particleLife: 130, particleLifeVariation: 20, particleSpeed: .8, particleSpeedVariation: .5, particleSpread: 8, particleDrag: .99, revealSoftness: .94, revealOpacity: .82, particleFade: .55 }
+        };
+        function applyPreset(name) { if (name !== "Custom" && presets[name]) Object.assign(config, presets[name]); config.preset = name; syncControls(); renderValues(); $("#sPreset").textContent = name }
+        function syncControls() { [...document.querySelectorAll('input[type=range]')].forEach(i => { const k = i.id.slice(2); i.value = config[k] });["spawnBySpeed", "idleAnimation", "touchSupport", "particleTrail"].forEach(k => $("#c-" + k).checked = !!config[k]) }
+        function renderValues() { defs.particle.concat(defs.reveal, defs.cursor, defs.image).forEach(d => $("#v-" + d[0]).textContent = fmt(d[0], config[d[0]])); $("#sPreset").textContent = config.preset; $("#sSpeed").textContent = mouse.speed.toFixed(2) }
+        function syncPreset() { $("#preset").value = config.preset; $("#sPreset").textContent = config.preset }
+        $("#preset").onchange = e => applyPreset(e.target.value); $("#reset").onclick = () => { config = { ...defaults }; particles.length = 0; syncControls(); renderValues(); syncPreset() };
+        $("#clear").onclick = () => particles.length = 0;
+        $("#randomize").onclick = () => { const ranges = defs.particle.concat(defs.reveal, defs.cursor, defs.image); for (const [k, , min, max] of ranges) { let v = min + Math.random() * (max - min); if (k === "particleDrag") v = Math.min(.995, Math.max(.94, v)); if (k === "particleCount") v = Math.round(v); config[k] = v } config.preset = "Custom"; syncControls(); renderValues(); syncPreset() };
+        renderValues();
+
+        /* IMPORT / EXPORT */
+        function exportConfig() { const data = { ...config, version: 1, exportedAt: new Date().toISOString() }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "particle-config.json"; a.click(); URL.revokeObjectURL(a.href) }
+        function clampConfig(raw) { const out = { ...defaults }; for (const [k, v] of Object.entries(raw || {})) { if (typeof out[k] === "number" && Number.isFinite(Number(v))) out[k] = Number(v); else if (typeof out[k] === "boolean") out[k] = !!v } const ranges = [...defs.particle, ...defs.reveal, ...defs.cursor, ...defs.image]; for (const [k, , min, max] of ranges) out[k] = Math.min(max, Math.max(min, out[k])); out.preset = presets[out.preset] ? out.preset : "Custom"; return out }
+        $("#export").onclick = exportConfig; $("#importBtn").onclick = () => $("#file").click(); $("#file").onchange = async e => { try { const raw = JSON.parse(await e.target.files[0].text()); config = clampConfig(raw); syncControls(); renderValues(); syncPreset(); particles.length = 0 } catch (err) { toast("Invalid configuration file") } e.target.value = "" };
+        $("#copy").onclick = async () => { try { await navigator.clipboard.writeText(JSON.stringify(config, null, 2)); toast("Copied!") } catch { toast("Clipboard unavailable") } };
+        function toast(s) { const t = $("#toast"); t.textContent = s; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 1300) }
+        function showTip(e, text) { const t = $("#tip"); t.textContent = text; t.style.display = "block"; const r = e.currentTarget.getBoundingClientRect(); t.style.left = Math.min(innerWidth - 240, Math.max(8, r.left - 215)) + "px"; t.style.top = (r.bottom + 7) + "px" } function hideTip() { $("#tip").style.display = "none" }
+        base.addEventListener("load", () => { if (!particles.length) spawn(W / 2, H / 2, 5) }); window.addEventListener("keydown", e => { if (e.key === "Escape") hideTip() });
+    </script>
+</body>
+
+</html>
